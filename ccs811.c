@@ -10,8 +10,6 @@ const uint8_t g_reset_value[4] = {0x11, 0xE5, 0x72, 0x8A};
 
 static int16_t wait_for_reg_value(uint8_t reg_addr, uint8_t reg_value, uint8_t mask);
 
-#define MAX_CONSECUTIVE_READ_ATTEMPTS 500
-
 int16_t ccs811_probe() {
     int8_t ret;
     uint8_t buff[1];
@@ -137,7 +135,7 @@ int16_t wait_for_reg_value(uint8_t reg_addr, uint8_t reg_value, uint8_t mask) {
     uint8_t buff[1];
     uint16_t attempts = 0;
 
-    while (attempts < MAX_CONSECUTIVE_READ_ATTEMPTS) {
+    while (attempts < CCS811_READ_WAIT_FOR_REG_ATTEMPTS) {
         attempts++;
 
         ret = ccs811_i2c_read(I2C_CCS811_ADDRESS, reg_addr, buff, 1);
@@ -149,7 +147,7 @@ int16_t wait_for_reg_value(uint8_t reg_addr, uint8_t reg_value, uint8_t mask) {
         ccs811_i2c_delay_ms(1000);
     }
 
-    if (attempts == MAX_CONSECUTIVE_READ_ATTEMPTS) {
+    if (attempts == CCS811_READ_WAIT_FOR_REG_ATTEMPTS) {
         return CCS811_WAIT_TIMEOUT_ERROR;
     }
 

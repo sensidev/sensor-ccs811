@@ -36,6 +36,8 @@
 #define CCS811_INTERRUPT_DRIVEN 0x08u
 #define CCS811_THRESHOLDS_ENABLED 0x04u
 
+#define CCS811_READ_WAIT_FOR_REG_ATTEMPTS 5
+
 typedef struct {
 	uint16_t eCO2;
 	uint16_t tVOC;
