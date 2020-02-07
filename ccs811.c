@@ -86,6 +86,8 @@ int16_t ccs811_read(uint16_t *eCO2, uint16_t *tVOC) {
     // Read STATUS - Wait for DATA_READY
     ret = wait_for_reg_value(CCS811_STATUS_REG, CCS811_STATUS_DATA_READY_MASK, CCS811_STATUS_DATA_READY_MASK);
 
+    if(ret != CCS811_OK) return ret;
+
     ret = ccs811_i2c_read(I2C_CCS811_ADDRESS, CCS811_ALG_RESULT_DATA_REG, buff, 4);
     if (ret != CCS811_OK) return ret;
 
@@ -144,7 +146,7 @@ int16_t wait_for_reg_value(uint8_t reg_addr, uint8_t reg_value, uint8_t mask) {
         bool b_is_expected_value = ((buff[0] & mask) == reg_value);
         if (b_is_expected_value) return CCS811_OK;
 
-        ccs811_i2c_delay_ms(1000);
+        ccs811_i2c_delay_ms(500);
     }
 
     if (attempts == CCS811_READ_WAIT_FOR_REG_ATTEMPTS) {
