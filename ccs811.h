@@ -2,6 +2,7 @@
 #define SENSOR_CCS811_H
 
 #include "stdint.h"
+#include "ccs811_errors.h"
 
 // Registers
 #define CCS811_STATUS_REG 0x00u
@@ -36,26 +37,28 @@
 #define CCS811_INTERRUPT_DRIVEN 0x08u
 #define CCS811_THRESHOLDS_ENABLED 0x04u
 
-#define CCS811_READ_WAIT_FOR_REG_ATTEMPTS 5
-
 typedef struct {
-	uint16_t eCO2;
-	uint16_t tVOC;
-	uint8_t status;
-	uint8_t error_id;
-	uint16_t raw_data;
-} ccs811_measurement_t;
+    uint16_t eCO2;
+    uint16_t tVOC;
+    uint8_t status;
+    uint8_t error_id;
+    uint16_t raw_data;
+} CCS811Measurement_t;
 
 int16_t ccs811_probe();
 
-int16_t ccs811_setup_measure_mode_register(uint8_t data);
+CCS811Status_t ccs811_setup_measure_mode_register(uint8_t data);
 
-int16_t ccs811_read(uint16_t *eCO2, uint16_t *tVOC);
+CCS811Status_t ccs811_read();
 
 void ccs811_wakeup();
 
 void ccs811_sleep();
 
-int16_t ccs811_reset();
+CCS811Status_t ccs811_reset();
+
+CCS811Measurement_t ccs811_last_measurement();
+
+CCS811Status_t ccs811_compensate_for(uint32_t temperature, uint32_t humidity);
 
 #endif

@@ -5,10 +5,12 @@
 #include "stddef.h"
 #include "stdbool.h"
 
+static CCS811Measurement_t g_last_measurement;
 static uint8_t g_measure_mode = CCS811_DRIVE_MODE_IDLE;
-const uint8_t g_reset_value[4] = {0x11, 0xE5, 0x72, 0x8A};
 
-static int16_t wait_for_reg_value(uint8_t reg_addr, uint8_t reg_value, uint8_t mask);
+static void prepare_i2c_buffer_for_env_data(uint32_t value, uint8_t offset, uint8_t *buffer);
+
+const uint8_t g_reset_value[4] = {0x11, 0xE5, 0x72, 0x8A};
 
 int16_t ccs811_probe() {
     int8_t ret;
@@ -60,7 +62,7 @@ int16_t ccs811_probe() {
     return CCS811_OK;
 }
 
-int16_t ccs811_setup_measure_mode_register(uint8_t data) {
+CCS811Status_t ccs811_setup_measure_mode_register(uint8_t data) {
     int16_t ret;
     uint8_t buff[1];
 
@@ -78,27 +80,25 @@ int16_t ccs811_setup_measure_mode_register(uint8_t data) {
     return CCS811_OK;
 }
 
-int16_t ccs811_read(uint16_t *eCO2, uint16_t *tVOC) {
+CCS811Status_t ccs811_read() {
     int16_t ret;
     uint8_t buff[8];
-    ccs811_measurement_t measurement;
 
-    // Read STATUS - Wait for DATA_READY
-    ret = wait_for_reg_value(CCS811_STATUS_REG, CCS811_STATUS_DATA_READY_MASK, CCS811_STATUS_DATA_READY_MASK);
-
-    if(ret != CCS811_OK) return ret;
-
-    ret = ccs811_i2c_read(I2C_CCS811_ADDRESS, CCS811_ALG_RESULT_DATA_REG, buff, 4);
+    ret = ccs811_i2c_read(I2C_CCS811_ADDRESS, CCS811_ALG_RESULT_DATA_REG, buff, 8);
     if (ret != CCS811_OK) return ret;
 
-    measurement.eCO2 = (uint16_t) (buff[0] << 8u) | buff[1];
-    measurement.tVOC = (uint16_t) (buff[2] << 8u) | buff[3];
-    measurement.status = buff[4];
-    measurement.error_id = buff[5];
-    measurement.raw_data = (uint16_t) (buff[6] << 8u) | buff[7];
+    g_last_measurement.eCO2 = (uint16_t) (buff[0] << 8u) | buff[1];
+    g_last_measurement.tVOC = (uint16_t) (buff[2] << 8u) | buff[3];
+    g_last_measurement.status = buff[4];
+    g_last_measurement.error_id = buff[5];
+    g_last_measurement.raw_data = (uint16_t) (buff[6] << 8u) | buff[7];
 
-    *eCO2 = measurement.eCO2;
-    *tVOC = measurement.tVOC;
+    bool is_data_ready = g_last_measurement.status & CCS811_STATUS_DATA_READY_MASK;
+    bool has_error = g_last_measurement.error_id & CCS811_STATUS_ERROR_MASK;
+
+    if (!is_data_ready) return CCS811_STATUS_DATA_READY_ERROR;
+    if (has_error) return CCS811_STATUS_HAS_ERROR;
+    if (0 == g_last_measurement.eCO2) return CCS811_STATUS_INVALID_VALUE_ERROR;
 
     return CCS811_OK;
 }
@@ -123,7 +123,7 @@ int16_t ccs811_deep_sleep() {
     return CCS811_OK;
 }
 
-int16_t ccs811_reset() {
+CCS811Status_t ccs811_reset() {
     int16_t ret;
 
     ret = ccs811_deep_sleep();
@@ -132,26 +132,33 @@ int16_t ccs811_reset() {
     return ccs811_i2c_write(I2C_CCS811_ADDRESS, CCS811_SW_RESET_REG, g_reset_value, 4);
 }
 
-int16_t wait_for_reg_value(uint8_t reg_addr, uint8_t reg_value, uint8_t mask) {
-    int16_t ret;
-    uint8_t buff[1];
-    uint16_t attempts = 0;
+CCS811Measurement_t ccs811_last_measurement() {
+    return g_last_measurement;
+}
 
-    while (attempts < CCS811_READ_WAIT_FOR_REG_ATTEMPTS) {
-        attempts++;
+/**
+ * Compensate for given temperature and humidity.
+ * Inspired from AN000369: CCS811 Programming and Interfacing Guide.
+ *
+ * @param temperature 3 orders of magnitude greater, the value in Celsius multiplied with 10^3.
+ * @param humidity 3 orders of magnitude greater, the value in % multiplied with 10^3.
+ * @return CCS811_OK if successfully stored ENV_DATA register with new values.
+ */
+CCS811Status_t ccs811_compensate_for(uint32_t temperature, uint32_t humidity) {
+    uint8_t buffer[4];
 
-        ret = ccs811_i2c_read(I2C_CCS811_ADDRESS, reg_addr, buff, 1);
-        if (ret != CCS811_OK) return ret;
+    temperature += 25000;
 
-        bool b_is_expected_value = ((buff[0] & mask) == reg_value);
-        if (b_is_expected_value) return CCS811_OK;
+    prepare_i2c_buffer_for_env_data(humidity, 0, buffer);
+    prepare_i2c_buffer_for_env_data(temperature, 2, buffer);
 
-        ccs811_i2c_delay_ms(500);
+    return ccs811_i2c_write(I2C_CCS811_ADDRESS, CCS811_ENV_DATA_REG, buffer, 4);
+}
+
+static void prepare_i2c_buffer_for_env_data(uint32_t value, uint8_t offset, uint8_t *buffer) {
+    buffer[offset + 0] = ((value % 1000) / 100) > 7 ? (value / 1000 + 1) << 1u : (value / 1000) << 1u;
+    buffer[offset + 1] = 0;
+    if (((value % 1000) / 100) > 2 && (((value % 1000) / 100) < 8)) {
+        buffer[offset + 0] |= 1u;
     }
-
-    if (attempts == CCS811_READ_WAIT_FOR_REG_ATTEMPTS) {
-        return CCS811_WAIT_TIMEOUT_ERROR;
-    }
-
-    return CCS811_OK;
 }
