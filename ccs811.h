@@ -55,7 +55,7 @@ void ccs811_wakeup();
 
 void ccs811_sleep();
 
-CCS811Status_t ccs811_reset();
+CCS811Status_t ccs811_soft_reset();
 
 CCS811Measurement_t ccs811_last_measurement();
 
