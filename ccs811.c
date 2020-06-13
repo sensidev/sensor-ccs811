@@ -123,7 +123,7 @@ int16_t ccs811_deep_sleep() {
     return CCS811_OK;
 }
 
-CCS811Status_t ccs811_reset() {
+CCS811Status_t ccs811_soft_reset() {
     int16_t ret;
 
     ret = ccs811_deep_sleep();
