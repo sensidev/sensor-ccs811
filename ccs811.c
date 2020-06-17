@@ -132,6 +132,14 @@ CCS811Status_t ccs811_soft_reset() {
     return ccs811_i2c_write(I2C_CCS811_ADDRESS, CCS811_SW_RESET_REG, g_reset_value, 4);
 }
 
+uint32_t ccs811_get_sensor_resistance() {
+    uint16_t current = (g_last_measurement.raw_data & ~0x3FFu) >> 10u;
+    uint16_t rawADC = (g_last_measurement.raw_data & 0x3FFu);
+
+    return (uint32_t) ((1.65 * rawADC) / (current * 0.001023));
+
+}
+
 CCS811Measurement_t ccs811_last_measurement() {
     return g_last_measurement;
 }

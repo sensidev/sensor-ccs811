@@ -55,6 +55,8 @@ void ccs811_wakeup();
 
 void ccs811_sleep();
 
+uint32_t ccs811_get_sensor_resistance();
+
 CCS811Status_t ccs811_soft_reset();
 
 CCS811Measurement_t ccs811_last_measurement();
