@@ -63,4 +63,9 @@ CCS811Measurement_t ccs811_last_measurement();
 
 CCS811Status_t ccs811_compensate_for(uint32_t temperature, uint32_t humidity);
 
+CCS811Status_t ccs811_write_baseline(uint8_t *input);
+
+CCS811Status_t ccs811_read_baseline(uint8_t *output);
+
+
 #endif

@@ -163,6 +163,24 @@ CCS811Status_t ccs811_compensate_for(uint32_t temperature, uint32_t humidity) {
     return ccs811_i2c_write(I2C_CCS811_ADDRESS, CCS811_ENV_DATA_REG, buffer, 4);
 }
 
+/**
+ * Write two-bytes baseline.
+ * @param input - baseline to write to sensor.
+ * @return CCS811_OK if successfully read baseline.
+ */
+CCS811Status_t ccs811_write_baseline(uint8_t *input) {
+    return ccs811_i2c_write(I2C_CCS811_ADDRESS, CCS811_BASELINE_REG, input, 2);
+}
+
+/**
+ * Read two-bytes baseline.
+ * @param output - fresh baseline read from sensor.
+ * @return CCS811_OK if successfully read baseline.
+ */
+CCS811Status_t ccs811_read_baseline(uint8_t *output) {
+    return ccs811_i2c_read(I2C_CCS811_ADDRESS, CCS811_BASELINE_REG, output, 2);
+}
+
 static void prepare_i2c_buffer_for_env_data(uint32_t value, uint8_t offset, uint8_t *buffer) {
     buffer[offset + 0] = ((value % 1000) / 100) > 7 ? (value / 1000 + 1) << 1u : (value / 1000) << 1u;
     buffer[offset + 1] = 0;
